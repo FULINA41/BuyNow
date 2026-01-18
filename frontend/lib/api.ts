@@ -1,5 +1,5 @@
 /**
- * API 调用封装
+ * API Call Wrapper
  */
 import { AnalysisRequest, AnalysisResponse } from './types';
 

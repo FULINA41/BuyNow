@@ -1,5 +1,5 @@
 /**
- * 信号卡片组件
+ * Signal Card Component
  */
 import { SignalResponse } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,10 +11,10 @@ interface SignalCardProps {
 }
 
 const signalBadges: Record<string, { emoji: string; color: string; beamColor: string }> = {
-  观察: { emoji: '⚪', color: 'bg-gradient-to-r from-gray-100 to-slate-100 text-gray-700', beamColor: '#9ca3af' },
-  试探: { emoji: '🟡', color: 'bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-800', beamColor: '#fbbf24' },
-  建仓: { emoji: '🟢', color: 'bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-800', beamColor: '#10b981' },
-  加仓: { emoji: '🔵', color: 'bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-800', beamColor: '#3b82f6' },
+  观察: { emoji: '⚪', color: 'bg-muted text-muted-foreground', beamColor: '#9ca3af' },
+  试探: { emoji: '🟡', color: 'bg-muted text-muted-foreground', beamColor: '#9ca3af' },
+  建仓: { emoji: '🟢', color: 'bg-muted text-muted-foreground', beamColor: '#9ca3af' },
+  加仓: { emoji: '🔵', color: 'bg-muted text-muted-foreground', beamColor: '#9ca3af' },
 };
 
 export default function SignalCard({ signal }: SignalCardProps) {
@@ -22,14 +22,9 @@ export default function SignalCard({ signal }: SignalCardProps) {
 
   return (
     <AnimatedCardHover>
-      <Card className="relative overflow-hidden bg-white/60 backdrop-blur-md border-white/30 shadow-lg">
-        <BorderBeam 
-          colorFrom={badge.beamColor} 
-          colorTo={badge.beamColor}
-          duration={10}
-        />
+      <Card className="relative overflow-hidden">
         <CardHeader>
-          <CardTitle className="text-lg">建议动作</CardTitle>
+          <CardTitle className="text-lg">Recommended Action</CardTitle>
         </CardHeader>
         <CardContent>
           <div className={`inline-block px-4 py-2 rounded-full ${badge.color} font-medium`}>
@@ -37,13 +32,13 @@ export default function SignalCard({ signal }: SignalCardProps) {
           </div>
           <div className="mt-4 space-y-2 text-sm">
             <div className="flex items-center gap-2">
-              {signal.A_pos ? '✅' : '❌'} <span>位置偏低</span>
+              {signal.A_pos ? '✅' : '❌'} <span>Position Low</span>
             </div>
             <div className="flex items-center gap-2">
-              {signal.B_rsi ? '✅' : '❌'} <span>RSI偏冷</span>
+              {signal.B_rsi ? '✅' : '❌'} <span>RSI Cold</span>
             </div>
             <div className="flex items-center gap-2">
-              {signal.C_turn ? '✅' : '❌'} <span>开始回暖</span>
+              {signal.C_turn ? '✅' : '❌'} <span>Starting Recovery</span>
             </div>
           </div>
         </CardContent>

@@ -1,5 +1,5 @@
 /**
- * NextAuth.js 认证路由
+ * NextAuth.js Authentication Route
  */
 import NextAuth, { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
@@ -18,12 +18,12 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        // 这里可以对接 Supabase 或其他认证服务
-        // 暂时返回 null，表示需要配置
+        // Can integrate with Supabase or other authentication services here
+        // Temporarily returns null, indicating configuration needed
         if (!credentials) return null;
         
-        // 示例：简单的演示模式（实际应该查询数据库）
-        // 未来可以对接 Supabase Auth
+        // Example: Simple demo mode (should actually query database)
+        // Can integrate with Supabase Auth in the future
         return null;
       },
     }),

@@ -1,5 +1,5 @@
 /**
- * 提供者组件（用于 NextAuth SessionProvider）
+ * Providers Component (for NextAuth SessionProvider)
  */
 'use client';
 

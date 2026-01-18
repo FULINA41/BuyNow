@@ -1,5 +1,5 @@
 /**
- * TypeScript 类型定义
+ * TypeScript Type Definitions
  */
 
 export type InvestmentMode = "conservative" | "standard" | "aggressive";

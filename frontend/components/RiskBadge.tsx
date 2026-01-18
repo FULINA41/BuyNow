@@ -1,5 +1,5 @@
 /**
- * 风险徽章组件
+ * Risk Badge Component
  */
 import { RiskResponse } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,9 +11,9 @@ interface RiskBadgeProps {
 }
 
 const riskColors: Record<string, { bg: string; text: string; beamColor: string }> = {
-  '🟢 低风险': { bg: 'bg-gradient-to-r from-emerald-100 to-green-100', text: 'text-emerald-800', beamColor: '#10b981' },
-  '🟡 中等风险': { bg: 'bg-gradient-to-r from-amber-100 to-yellow-100', text: 'text-amber-800', beamColor: '#fbbf24' },
-  '🔴 高风险': { bg: 'bg-gradient-to-r from-red-100 to-rose-100', text: 'text-red-800', beamColor: '#ef4444' },
+  '🟢 低风险': { bg: 'bg-muted', text: 'text-muted-foreground', beamColor: '#9ca3af' },
+  '🟡 中等风险': { bg: 'bg-muted', text: 'text-muted-foreground', beamColor: '#9ca3af' },
+  '🔴 高风险': { bg: 'bg-muted', text: 'text-muted-foreground', beamColor: '#9ca3af' },
 };
 
 export default function RiskBadge({ risk }: RiskBadgeProps) {
@@ -21,22 +21,17 @@ export default function RiskBadge({ risk }: RiskBadgeProps) {
 
   return (
     <AnimatedCardHover>
-      <Card className="relative overflow-hidden bg-white/60 backdrop-blur-md border-white/30 shadow-lg">
-        <BorderBeam 
-          colorFrom={colors.beamColor} 
-          colorTo={colors.beamColor}
-          duration={10}
-        />
+      <Card className="relative overflow-hidden">
         <CardHeader>
-          <CardTitle className="text-lg">风险等级</CardTitle>
+          <CardTitle className="text-lg">Risk Level</CardTitle>
         </CardHeader>
         <CardContent>
           <div className={`inline-block px-4 py-2 rounded-full ${colors.bg} ${colors.text} font-medium`}>
             {risk.Risk}
           </div>
           <div className="mt-4 text-sm text-muted-foreground">
-            <p>风险评分: {risk.RiskScore}/6</p>
-            <p>趋势: {risk.TrendUp ? '📈 上升' : '📉 下降'}</p>
+            <p>Risk Score: {risk.RiskScore}/6</p>
+            <p>Trend: {risk.TrendUp ? '📈 Up' : '📉 Down'}</p>
           </div>
         </CardContent>
       </Card>
