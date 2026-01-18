@@ -62,7 +62,7 @@ export default function StockAnalyzer() {
     <div className="max-w-6xl mx-auto p-6 space-y-6 relative z-20">
       <Card>
         <CardHeader>
-          <CardTitle>Engineer Alpha Risk Level & Entry Zones</CardTitle>
+          <CardTitle className="text-center">Engineer Alpha Risk Level & Entry Zones</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -119,7 +119,7 @@ export default function StockAnalyzer() {
             <Button
               onClick={handleAnalyze}
               disabled={loading}
-              className="w-full relative z-30"
+              className="w-full relative z-30  hover:bg-white/60 active:text-white"
             >
               {loading ? 'Analyzing...' : 'Generate Analysis'}
             </Button>
