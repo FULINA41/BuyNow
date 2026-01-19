@@ -10,9 +10,66 @@ from ..utils.formatters import safe_float
 from fastapi import HTTPException
 from loguru import logger
 import os
-import requests 
+import requests
 import io
 
+
+def get_stock_metrics(ticker, start: str):
+    # FMP provides 'quote' API for price, market cap, PE
+    # 'key-metrics-ttm' API provides PS, PB, FCF, etc. TTM data
+
+    base_url = "https://financialmodelingprep.com/stable/"
+    api_key = os.getenv("FMP_API_KEY")
+    try:
+        # 1. get real-time price, market cap, PE
+        quote_url = f"{base_url}/quote?symbol={ticker}&apikey={api_key}&startDate={start}"
+        q_res = requests.get(quote_url).json()
+
+        # 2. get key financial metrics (TTM version)
+        metrics_url = f"{base_url}/key-metrics-ttm?symbol={ticker}&apikey={api_key}&startDate={start}"
+        m_res = requests.get(metrics_url).json()
+
+        if not q_res or not m_res:
+            logger.warning(f"failed to get complete data for {ticker}")
+            return None
+
+        # Handle both list and dict responses
+        if isinstance(q_res, list) and len(q_res) > 0:
+            q = q_res[0]
+        elif isinstance(q_res, dict):
+            q = q_res
+        else:
+            return None
+
+        if isinstance(m_res, list) and len(m_res) > 0:
+            m = m_res[0]
+        elif isinstance(m_res, dict):
+            m = m_res
+        else:
+            return None
+
+        # Ensure q and m are dicts before accessing
+        if not isinstance(q, dict) or not isinstance(m, dict):
+            logger.warning(
+                f"Invalid response format for {ticker}: q is {type(q).__name__}, m is {type(m).__name__}")
+            return None
+
+        # map to your data structure
+        return pd.DataFrame(data={
+            "Price": [q.get("price")],
+            "Shares": [q.get("sharesOutstanding")],
+            "MarketCap": [q.get("marketCap")],
+            # 估算营收
+            "RevenueTTM": [m.get("revenuePerShareTTM") * q.get("sharesOutstanding") if m.get("revenuePerShareTTM") and q.get("sharesOutstanding") else None],
+            "FCF": [m.get("freeCashFlowTTM")],
+            "PE": [q.get("pe")],
+            "PS": [m.get("priceToSalesRatioTTM")],
+            "PB": [m.get("priceToBookRatioTTM")],
+        })
+
+    except Exception as e:
+        logger.error(f"failed to get metrics for {ticker}: {e}")
+        return None
 
 
 def get_stock_data_from_fmp(ticker: str, start: str) -> pd.DataFrame:
@@ -58,14 +115,24 @@ def get_stock_data_from_fmp(ticker: str, start: str) -> pd.DataFrame:
                     stable_res.raise_for_status()
                 if stable_res.ok:
                     stable_payload = stable_res.json()
-                    historical = stable_payload.get(
-                        "historical") or stable_payload.get("historicalStockList")
+                    if isinstance(stable_payload, dict):
+                        historical = stable_payload.get(
+                            "historical") or stable_payload.get("historicalStockList")
+                    elif isinstance(stable_payload, list) and len(stable_payload) > 0:
+                        historical = stable_payload
+                    else:
+                        historical = None
             else:
                 stable_res.raise_for_status()
                 if stable_res.ok:
                     stable_payload = stable_res.json()
-                    historical = stable_payload.get(
-                        "historical") or stable_payload.get("historicalStockList")
+                    if isinstance(stable_payload, dict):
+                        historical = stable_payload.get(
+                            "historical") or stable_payload.get("historicalStockList")
+                    elif isinstance(stable_payload, list) and len(stable_payload) > 0:
+                        historical = stable_payload
+                    else:
+                        historical = None
         if not historical:
             logger.warning(
                 f"No historical data returned from FMP for {ticker}")
@@ -105,7 +172,10 @@ def get_stock_data_from_fmp(ticker: str, start: str) -> pd.DataFrame:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors="coerce")
 
-        metrics_df = get_stock_metrics(ticker, start)
+        try:
+            metrics_df = get_stock_metrics(ticker, start)
+        except (NameError, AttributeError):
+            metrics_df = None
         if metrics_df is not None and not metrics_df.empty:
             metrics_row = metrics_df.iloc[0].to_dict()
             for key, value in metrics_row.items():
@@ -284,11 +354,13 @@ def load_price_cached(ticker: str, start: str, cache_buster: int = None, max_ret
             # prioritize getting historical price data from FMP, if failed fallback to yfinance
             df = get_stock_data_from_fmp(ticker, start)
             if df is None or df.empty:
-                logger.warning(f"Failed to get historical price data from FMP for {ticker}, trying yinance")
+                logger.warning(
+                    f"Failed to get historical price data from FMP for {ticker}, trying yinance")
                 df = get_stock_data_from_yfinance(ticker, start)
 
             if df is None or df.empty:
-                logger.warning(f"Failed to get historical price data from yfinance for {ticker}, trying stooq")
+                logger.warning(
+                    f"Failed to get historical price data from yfinance for {ticker}, trying stooq")
                 df = get_stock_data_from_stooq(ticker, start)
 
             # verify data completeness
