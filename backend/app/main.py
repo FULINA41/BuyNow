@@ -1,11 +1,22 @@
 """
 FastAPI entry point
 """
+from loguru import logger
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .routers import analysis
 import os
+from dotenv import load_dotenv
 
+# logging
+from .core.logging_config import setup_logging
+# initialize logging
+setup_logging()
+
+# Load environment variables from .env if present
+load_dotenv()
+
+logger.info("Starting BuyNow API")
 app = FastAPI(
     title="Engineer Alpha API",
     description="Stock risk analysis and buy zone API",

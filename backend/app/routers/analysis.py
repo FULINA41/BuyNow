@@ -1,6 +1,7 @@
 """
 分析 API 路由
 """
+from loguru import logger
 from fastapi import APIRouter, HTTPException
 import pandas as pd
 from ..models.schemas import AnalysisRequest, AnalysisResponse, SignalResponse, RiskResponse, ZonesResponse, FundamentalsResponse, FairValueResponse, AddLevelsResponse
@@ -9,6 +10,10 @@ from ..services.signals import signal_abc
 from ..services.risk import risk_level
 from ..services.zones import buy_zones, add_levels
 from ..services.fundamentals import get_fundamentals, rough_fair_value_range
+from ..core.logging_config import setup_logging
+setup_logging()
+logger.add("logs/analysis.log", backtrace=True, diagnose=True)
+
 
 router = APIRouter(prefix="/api/v1", tags=["analysis"])
 
@@ -16,34 +21,44 @@ router = APIRouter(prefix="/api/v1", tags=["analysis"])
 @router.post("/analyze", response_model=AnalysisResponse)
 async def analyze_stock(request: AnalysisRequest):
     """
-    分析股票：生成信号、风险、买入区间等
+    analyze stock: generate signal, risk, buy zones, etc.
     """
     try:
-        # 计算开始日期
-        start = (pd.Timestamp.today(tz="UTC") - pd.Timedelta(days=365 * request.years)).date().isoformat()
+        # calculate start date
+        start = (pd.Timestamp.today(tz="UTC") -
+                 pd.Timedelta(days=365 * request.years)).date().isoformat()
 
-        # 加载价格数据
+        # load price data
         df = load_price(request.ticker, start)
 
-        if df is None or df.empty or "Close" not in df.columns or len(df) < 260:
+        # check if data is available
+        if (
+            df is None
+            or not hasattr(df, "__getitem__")
+            or "Close" not in df
+            or df["Close"] is None
+            or (hasattr(df["Close"], "__len__") and len(df["Close"]) < 260)
+        ):
+            logger.error(
+                f"Data not available for {request.ticker}: {df.head() if df is not None else 'No data'}")
             raise HTTPException(
                 status_code=400,
-                detail="数据不足或拉取失败（可能 ticker 错误、停牌、或历史太短）"
+                detail="data not enough or failed to load"
             )
 
-        # 核心计算
+        # core calculation
         sig = signal_abc(df)
         risk = risk_level(df)
         zones = buy_zones(df)
 
-        # 基本面分析
+        # fundamentals analysis
         f = get_fundamentals(request.ticker)
         fair = rough_fair_value_range(f)
 
-        # 加仓位置
+        # add levels
         adds = add_levels(sig["Last"], zones, fair)
 
-        # 构建响应
+        # build response
         return AnalysisResponse(
             signal=SignalResponse(**sig),
             risk=RiskResponse(**risk),
@@ -58,5 +73,5 @@ async def analyze_stock(request: AnalysisRequest):
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"分析过程中出错: {str(e)}"
+            detail=f"error during analysis: {str(e)}"
         )
