@@ -11,14 +11,14 @@ interface SignalCardProps {
 }
 
 const signalBadges: Record<string, { emoji: string; color: string; beamColor: string }> = {
-  观察: { emoji: '⚪', color: 'bg-muted text-muted-foreground', beamColor: '#9ca3af' },
-  试探: { emoji: '🟡', color: 'bg-muted text-muted-foreground', beamColor: '#9ca3af' },
-  建仓: { emoji: '🟢', color: 'bg-muted text-muted-foreground', beamColor: '#9ca3af' },
-  加仓: { emoji: '🔵', color: 'bg-muted text-muted-foreground', beamColor: '#9ca3af' },
+  Observation: { emoji: '⚪', color: 'bg-muted text-muted-foreground', beamColor: '#9ca3af' },
+  Probing: { emoji: '🟡', color: 'bg-muted text-muted-foreground', beamColor: '#9ca3af' },
+  Building_a_Position: { emoji: '🟢', color: 'bg-muted text-muted-foreground', beamColor: '#9ca3af' },
+  Adding_to_a_Position: { emoji: '🔵', color: 'bg-muted text-muted-foreground', beamColor: '#9ca3af' },
 };
 
 export default function SignalCard({ signal }: SignalCardProps) {
-  const badge = signalBadges[signal.Signal] || signalBadges['观察'];
+  const badge = signalBadges[signal.Signal] || signalBadges['Observation'];
 
   return (
     <AnimatedCardHover>

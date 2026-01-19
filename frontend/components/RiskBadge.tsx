@@ -11,13 +11,13 @@ interface RiskBadgeProps {
 }
 
 const riskColors: Record<string, { bg: string; text: string; beamColor: string }> = {
-  '🟢 低风险': { bg: 'bg-muted', text: 'text-muted-foreground', beamColor: '#9ca3af' },
-  '🟡 中等风险': { bg: 'bg-muted', text: 'text-muted-foreground', beamColor: '#9ca3af' },
-  '🔴 高风险': { bg: 'bg-muted', text: 'text-muted-foreground', beamColor: '#9ca3af' },
+  '🟢 Low Risk': { bg: 'bg-muted', text: 'text-muted-foreground', beamColor: '#9ca3af' },
+  '🟡 Medium Risk': { bg: 'bg-muted', text: 'text-muted-foreground', beamColor: '#9ca3af' },
+  '🔴 High Risk': { bg: 'bg-muted', text: 'text-muted-foreground', beamColor: '#9ca3af' },
 };
 
 export default function RiskBadge({ risk }: RiskBadgeProps) {
-  const colors = riskColors[risk.Risk] || riskColors['🟡 中等风险'];
+  const colors = riskColors[risk.Risk] || riskColors['🟡 Medium Risk'];
 
   return (
     <AnimatedCardHover>
