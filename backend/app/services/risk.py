@@ -44,11 +44,11 @@ def risk_level(df: pd.DataFrame) -> dict:
         score += 1
 
     if score >= 5:
-        lvl = "🔴 高风险"
+        lvl = "🔴 High Risk"
     elif score >= 3:
-        lvl = "🟡 中等风险"
+        lvl = "🟡 Medium Risk"
     else:
-        lvl = "🟢 低风险"
+        lvl = "🟢 Low Risk"
 
     return {
         "Risk": lvl,

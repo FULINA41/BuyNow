@@ -34,13 +34,13 @@ def signal_abc(df: pd.DataFrame) -> dict:
         C = float(rsi_dropna.iloc[-1]) > float(rsi_dropna.iloc[-2])
 
     if A and B and C:
-        sig = "加仓"
+        sig = "Adding to a Position"
     elif A and B:
-        sig = "建仓"
+        sig = "Building a Position"
     elif A or B:
-        sig = "试探"
+        sig = "Probing"
     else:
-        sig = "观察"
+        sig = "Observation"
 
     return {
         "Signal": sig,
