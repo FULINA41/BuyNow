@@ -10,47 +10,9 @@ from ..utils.formatters import safe_float
 from fastapi import HTTPException
 from loguru import logger
 import os
-import requests
+import requests 
 import io
 
-# def get_stock_metrics(ticker, start: str):
-#     # FMP provides 'quote' API for price, market cap, PE
-#     # 'key-metrics-ttm' API provides PS, PB, FCF, etc. TTM data
-
-#     base_url = "https://financialmodelingprep.com/stable/"
-#     api_key = os.getenv("FMP_API_KEY")
-#     try:
-#         # 1. get real-time price, market cap, PE
-#         quote_url = f"{base_url}/quote?symbol={ticker}&apikey={api_key}&startDate={start}"
-#         q_res = requests.get(quote_url).json()
-
-#         # 2. get key financial metrics (TTM version)
-#         metrics_url = f"{base_url}/key-metrics-ttm?symbol={ticker}&apikey={api_key}&startDate={start}"
-#         m_res = requests.get(metrics_url).json()
-
-#         if not q_res or not m_res:
-#             logger.warning(f"failed to get complete data for {ticker}")
-#             return None
-
-#         q = q_res[0]
-#         m = m_res[0]
-
-#         # map to your data structure
-#         return pd.DataFrame(data={
-#             "Price": [q.get("price")],
-#             "Shares": [q.get("sharesOutstanding")],
-#             "MarketCap": [q.get("marketCap")],
-#             # 估算营收
-#             "RevenueTTM": [m.get("revenuePerShareTTM") * q.get("sharesOutstanding") if m.get("revenuePerShareTTM") and q.get("sharesOutstanding") else None],
-#             "FCF": [m.get("freeCashFlowTTM")],
-#             "PE": [q.get("pe")],
-#             "PS": [m.get("priceToSalesRatioTTM")],
-#             "PB": [m.get("priceToBookRatioTTM")],
-#         })
-
-#     except Exception as e:
-#         logger.error(f"failed to get metrics for {ticker}: {e}")
-#         return None
 
 
 def get_stock_data_from_fmp(ticker: str, start: str) -> pd.DataFrame:
@@ -187,7 +149,7 @@ def get_stock_data_from_yfinance(ticker: str, start: str) -> pd.DataFrame:
                 interval="1d",
                 progress=False,
                 auto_adjust=False,
-                threads=False
+                threads=False,
             )
 
         if hist is None or hist.empty:
