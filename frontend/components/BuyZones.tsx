@@ -73,7 +73,7 @@ export default function BuyZones({ zones, mode }: BuyZonesProps) {
           </div>
 
           <p className="text-sm text-muted-foreground">
-            Note: Zones are generated based on ATR (volatility) + mean deviation, they are "batch zones", not bottom predictions.
+            Note: Zones are generated based on ATR (volatility) + mean deviation, they are &quot;batch zones&quot;, not bottom predictions.
           </p>
         </div>
       </CardContent>
