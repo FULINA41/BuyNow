@@ -15,9 +15,12 @@ import io
 
 
 def get_stock_metrics(ticker, start: str):
+    #this function is used to get the fundamental data for a company from FMP API a helper function for get_stock_data_from_fmp
+
     # FMP provides 'quote' API for price, market cap, PE
     # 'key-metrics-ttm' API provides PS, PB, FCF, etc. TTM data
 
+    #URL for FMP API
     base_url = "https://financialmodelingprep.com/stable/"
     api_key = os.getenv("FMP_API_KEY")
     try:
@@ -30,7 +33,7 @@ def get_stock_metrics(ticker, start: str):
         m_res = requests.get(metrics_url).json()
 
         if not q_res or not m_res:
-            logger.warning(f"failed to get complete data for {ticker}")
+            logger.warning(f"failed to get complete data for {ticker}", detail=f"q_res: {q_res}, m_res: {m_res}")
             return None
 
         # Handle both list and dict responses
@@ -59,7 +62,7 @@ def get_stock_metrics(ticker, start: str):
             "Price": [q.get("price")],
             "Shares": [q.get("sharesOutstanding")],
             "MarketCap": [q.get("marketCap")],
-            # 估算营收
+            # estimate revenue
             "RevenueTTM": [m.get("revenuePerShareTTM") * q.get("sharesOutstanding") if m.get("revenuePerShareTTM") and q.get("sharesOutstanding") else None],
             "FCF": [m.get("freeCashFlowTTM")],
             "PE": [q.get("pe")],
@@ -141,6 +144,7 @@ def get_stock_data_from_fmp(ticker: str, start: str) -> pd.DataFrame:
         df = pd.DataFrame(historical)
         if df.empty:
             return None
+        logger.info(f"successfully got the historical price data for {ticker} with FMP API")
 
         # standardize column names and select required columns
         column_mapping = {
@@ -173,9 +177,14 @@ def get_stock_data_from_fmp(ticker: str, start: str) -> pd.DataFrame:
                 df[col] = pd.to_numeric(df[col], errors="coerce")
 
         try:
+            #Get the fundamental data for the company with helper function get_stock_metrics
             metrics_df = get_stock_metrics(ticker, start)
         except (NameError, AttributeError):
             metrics_df = None
+        #if the fundamental data is not None and not empty, add the fundamental data to the dataframe
+        #Time complexity is high because of the loop and the dictionary operation
+        #TODO: optimize the time complexity
+        
         if metrics_df is not None and not metrics_df.empty:
             metrics_row = metrics_df.iloc[0].to_dict()
             for key, value in metrics_row.items():
