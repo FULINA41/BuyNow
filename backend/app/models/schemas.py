@@ -13,6 +13,7 @@ class AnalysisRequest(BaseModel):
         "standard", 
         description="投资风格"
     )
+    ##
 
 
 class SignalResponse(BaseModel):
