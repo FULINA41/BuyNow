@@ -1,4 +1,4 @@
-.PHONY: help install install-dev run run-dev docker-build docker-run docker-stop docker-push clean clean-pyc clean-logs test lint format check
+.PHONY: help install install-dev run run-dev docker-build docker-run docker-stop docker-push docker-test clean clean-pyc clean-logs test lint format check
 
 # Variables
 PYTHON := python3
@@ -73,6 +73,12 @@ docker-stop: ## Stop and remove Docker container
 	-docker stop $(DOCKER_IMAGE) 2>/dev/null
 	-docker rm $(DOCKER_IMAGE) 2>/dev/null
 	@echo "$(GREEN)Container stopped and removed.$(NC)"
+
+docker-test: ## Build test image and run integration tests in Docker (uses .env for GEMINI_API_KEY if present)
+	@echo "$(GREEN)Building test image and running tests in Docker...$(NC)"
+	docker build --target test -t $(DOCKER_IMAGE)-test:$(DOCKER_TAG) .
+	docker run --rm --env-file .env $(DOCKER_IMAGE)-test:$(DOCKER_TAG)
+	@echo "$(GREEN)Docker tests finished.$(NC)"
 
 docker-push: ## Build and push Docker image to GCP Container Registry
 	@if [ -z "$(GCP_PROJECT_ID)" ]; then \
