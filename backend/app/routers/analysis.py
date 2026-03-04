@@ -3,6 +3,7 @@
 """
 from loguru import logger
 from fastapi import APIRouter, HTTPException
+from starlette.responses import StreamingResponse
 import pandas as pd
 from ..models.schemas import AnalysisRequest, AnalysisResponse, SignalResponse, RiskResponse, ZonesResponse, FundamentalsResponse, FairValueResponse, AddLevelsResponse
 from ..services.data_loader import load_price
@@ -11,6 +12,7 @@ from ..services.risk import risk_level
 from ..services.zones import buy_zones, add_levels
 from ..services.fundamentals import get_fundamentals, rough_fair_value_range
 from ..core.logging_config import setup_logging
+from ..services.LLM import analyze_stock_fundamentals_llm
 setup_logging()
 logger.add("logs/analysis.log", backtrace=True, diagnose=True)
 
@@ -20,6 +22,7 @@ router = APIRouter(prefix="/api/v1", tags=["analysis"])
 
 @router.post("/analyze", response_model=AnalysisResponse)
 async def analyze_stock(request: AnalysisRequest):
+
     """
     analyze stock: generate signal, risk, buy zones, etc.
     """
@@ -75,3 +78,9 @@ async def analyze_stock(request: AnalysisRequest):
             status_code=500,
             detail=f"error during analysis: {str(e)}"
         )
+
+@router.post('/analyze/LLM')
+async def analyze_stock_llm(request: AnalysisRequest):
+    response_generator = analyze_stock_fundamentals_llm(request)
+    logger.info(f"LLM analysis response generating:{StreamingResponse(response_generator, media_type="text/event-stream")}")
+    return StreamingResponse(response_generator, media_type="text/event-stream")

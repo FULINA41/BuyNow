@@ -85,3 +85,4 @@ class AnalysisResponse(BaseModel):
     fundamentals: FundamentalsResponse
     fair_value: FairValueResponse
     add_levels: AddLevelsResponse
+

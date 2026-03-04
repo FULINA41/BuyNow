@@ -6,3 +6,4 @@ numpy>=1.26.4
 yfinance==0.2.32
 loguru>=0.7.0
 python-dotenv>=1.0.1
+google-genai>=1.0.0
