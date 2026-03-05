@@ -25,6 +25,6 @@ async def analyze_stock_fundamentals_llm(request: AnalysisRequest):
         contents=prompt,
         config=config,
     )
-    for content in response:
+    async for content in response:
         if content.text:
             yield content.text
