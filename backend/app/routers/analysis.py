@@ -81,6 +81,32 @@ async def analyze_stock(request: AnalysisRequest):
 
 @router.post('/analyze/LLM')
 async def analyze_stock_llm(request: AnalysisRequest):
-    response_generator = analyze_stock_fundamentals_llm(request)
-    logger.info(f"LLM analysis response generating:{StreamingResponse(response_generator, media_type="text/event-stream")}")
-    return StreamingResponse(response_generator, media_type="text/event-stream")
+    # 1. get async generator
+    # 确保 analyze_stock_fundamentals_llm 内部使用了 async for 和 await client.aio
+    gen = analyze_stock_fundamentals_llm(request)
+
+    # 2. convert the sting to SSE
+    async def event_generator():
+        try:
+            async for chunk in gen:
+                # 构造前端 fetchLLMAnalysis 函数预期的 JSON 结构
+                # 这样前端 JSON.parse(data) 才能拿到 .content
+                data = json.dumps({"content": chunk})
+                yield f"data: {data}\n\n"
+            
+            # 告诉前端传输彻底结束
+            yield "data: [DONE]\n\n"
+        except Exception as e:
+            logger.error(f"Streaming error: {e}")
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+    # 3. 返回响应，添加必要的 Header 防止缓存
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # 极其重要：告诉 Nginx 不要缓存流
+        }
+    )
