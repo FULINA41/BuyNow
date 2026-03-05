@@ -1,4 +1,0 @@
-streamlit
-yfinance
-pandas
-numpy
