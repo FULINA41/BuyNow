@@ -13,6 +13,7 @@ from ..services.zones import buy_zones, add_levels
 from ..services.fundamentals import get_fundamentals, rough_fair_value_range
 from ..core.logging_config import setup_logging
 from ..services.LLM import analyze_stock_fundamentals_llm
+import json
 setup_logging()
 logger.add("logs/analysis.log", backtrace=True, diagnose=True)
 
