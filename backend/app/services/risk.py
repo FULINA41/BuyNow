@@ -53,7 +53,7 @@ def risk_level(df: pd.DataFrame) -> dict:
     
     if is_crashing:
         score+=2
-        
+
     if score>=5 and is_death_cross:
         lvl = "🔴 High Risk(Death Cross)"
     elif score >= 5:
@@ -72,6 +72,5 @@ def risk_level(df: pd.DataFrame) -> dict:
         "Vol": safe_float(vol),
         "DD1Y": safe_float(dd),
         "Last": last
-        "DeathCross": is_death_cross
 
     }

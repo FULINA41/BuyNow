@@ -7,3 +7,5 @@ yfinance==0.2.32
 loguru>=0.7.0
 python-dotenv>=1.0.1
 google-genai>=1.0.0
+scipy>=1.12.0
+scikit-learn>=1.4.0
