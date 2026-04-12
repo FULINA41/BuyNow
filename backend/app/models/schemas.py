@@ -100,6 +100,12 @@ class OptimizeRequest(BaseModel):
     risk_free_rate: float = Field(
         0.04, ge=0.0, le=0.2, description="Annualized risk-free rate"
     )
+    vol_penalty: float = Field(
+        0.5,
+        ge=0.0,
+        le=5.0,
+        description="Volatility penalty strength — higher values bias toward low-vol blue-chips",
+    )
 
 
 class OptimizeResponse(BaseModel):

@@ -167,6 +167,7 @@ class PortfolioOptimizer:
         expected_returns: pd.Series,
         cov_matrix: pd.DataFrame,
         risk_free_rate: float = 0.04,
+        vol_penalty: float = 0.5,
     ) -> Dict[str, float]:
         """
         Find the portfolio weights that maximise the Sharpe ratio.
@@ -174,11 +175,17 @@ class PortfolioOptimizer:
         Uses SLSQP with constraints:
           - weights sum to 1
           - each weight in [0, 1]  (long-only)
+
+        Penalty terms in the objective:
+          - L2 regularisation to avoid extreme concentration
+          - Per-asset volatility penalty: vol_penalty * Σ(wᵢ · σᵢ),
+            higher vol_penalty → stronger bias toward low-vol blue-chips
         """
         n = len(expected_returns)
         init_weights = np.full(n, 1.0 / n)
 
         l2_lambda = 0.1
+        asset_vols = np.sqrt(np.diag(cov_matrix.values))
 
         def neg_sharpe(weights: np.ndarray) -> float:
             port_return = weights @ expected_returns.values
@@ -186,7 +193,9 @@ class PortfolioOptimizer:
             if port_vol == 0:
                 return 1e6
             sharpe = (port_return - risk_free_rate) / port_vol
-            return -sharpe + l2_lambda * np.sum(weights ** 2)
+            penalty = l2_lambda * np.sum(weights ** 2)
+            vol_drag = vol_penalty * (weights @ asset_vols)
+            return -sharpe + penalty + vol_drag
 
         constraints = {"type": "eq", "fun": lambda w: np.sum(w) - 1.0}
         bounds = tuple((0.05, 1.0) for _ in range(n))

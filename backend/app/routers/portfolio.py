@@ -43,7 +43,10 @@ async def optimize_portfolio(request: OptimizeRequest):
         expected_returns, cov_matrix = optimizer.calculate_returns_and_cov(
             prices)
         result = optimizer.optimize_max_sharpe(
-            expected_returns, cov_matrix, risk_free_rate=request.risk_free_rate,
+            expected_returns,
+            cov_matrix,
+            risk_free_rate=request.risk_free_rate,
+            vol_penalty=request.vol_penalty,
         )
 
         return OptimizeResponse(
