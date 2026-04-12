@@ -18,11 +18,18 @@ def risk_level(df: pd.DataFrame) -> dict:
     ma200 = ma(close, 200)
     trend_up = (pd.notna(ma50) and pd.notna(ma200) and ma50 > ma200)
 
-    # 信号1：死亡交叉（当前50下穿200）
-    is_death_cross = (pd.notna(ma50) and pd.notna(ma200) and ma50.iloc[-1] < ma200.iloc[-1]) and (ma50.iloc[-2] >= ma200.iloc[-2])
+    # 信号1：死亡交叉（当前50下穿200）— need rolling series for previous-day comparison
+    ma50_series = close.rolling(50).mean()
+    ma200_series = close.rolling(200).mean()
+    is_death_cross = False
+    if len(close) >= 200 and pd.notna(ma50) and pd.notna(ma200):
+        prev_ma50 = float(ma50_series.iloc[-2])
+        prev_ma200 = float(ma200_series.iloc[-2])
+        if pd.notna(prev_ma50) and pd.notna(prev_ma200):
+            is_death_cross = (ma50 < ma200) and (prev_ma50 >= prev_ma200)
 
     # 信号2：距离过远（比如50比200低了10%以上）
-    distance = (ma50.iloc[-1] - ma200.iloc[-1]) / ma200.iloc[-1]
+    distance = (ma50 - ma200) / ma200 if pd.notna(ma200) and ma200 != 0 else 0.0
     is_crashing = distance < -0.10
 
     vol = annualized_vol(close)      # annualized

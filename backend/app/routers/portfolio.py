@@ -8,7 +8,7 @@ import pandas as pd
 from ..models.schemas import OptimizeRequest, OptimizeResponse
 from ..utils.quant_engine import PortfolioOptimizer
 
-router = APIRouter(prefix="/api/portfolio", tags=["portfolio"])
+router = APIRouter(prefix="/api/v1", tags=["portfolio"])
 
 
 @router.post("/optimize", response_model=OptimizeResponse)
