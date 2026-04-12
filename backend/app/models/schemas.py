@@ -86,3 +86,33 @@ class AnalysisResponse(BaseModel):
     fair_value: FairValueResponse
     add_levels: AddLevelsResponse
 
+
+class OptimizeRequest(BaseModel):
+    tickers: list[str] = Field(
+        ...,
+        min_length=2,
+        description="List of stock tickers to optimize",
+        examples=[["AAPL", "MSFT", "GOOG", "AMZN"]],
+    )
+    lookback_years: int = Field(
+        3, ge=1, le=10, description="Years of historical data to use"
+    )
+    risk_free_rate: float = Field(
+        0.04, ge=0.0, le=0.2, description="Annualized risk-free rate"
+    )
+
+
+class OptimizeResponse(BaseModel):
+    weights: dict[str, float] = Field(
+        ..., description="Optimal weight per ticker"
+    )
+    expected_return: float = Field(
+        ..., description="Annualized expected portfolio return"
+    )
+    volatility: float = Field(
+        ..., description="Annualized portfolio volatility"
+    )
+    sharpe_ratio: float = Field(
+        ..., description="Portfolio Sharpe ratio"
+    )
+

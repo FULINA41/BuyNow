@@ -75,6 +75,91 @@ def get_stock_metrics(ticker, start: str):
         return None
 
 
+ALPACA_DATA_BASE = "https://data.alpaca.markets/v2/stocks"
+
+
+def get_stock_data_from_alpaca(ticker: str, start: str) -> pd.DataFrame:
+    """
+    Fetch historical OHLCV bars from Alpaca Market Data API.
+    Returns a DataFrame with columns: Close, High, Low, Open, Volume.
+    """
+    api_key = (os.getenv("ALPACA_API_KEY_ID") or "").strip()
+    api_secret = (os.getenv("ALPACA_API_SECRET_KEY") or "").strip()
+    if not api_key or not api_secret:
+        return None
+
+    headers = {
+        "APCA-API-KEY-ID": api_key,
+        "APCA-API-SECRET-KEY": api_secret,
+    }
+    end = (
+        pd.Timestamp.today(tz="UTC") - pd.Timedelta(minutes=16)
+    ).isoformat()
+    
+    params = {
+        "symbols": ticker,
+        "timeframe": "1Day",
+        "start": start,
+        "end": end,
+        "adjustment": "all",
+        "limit": 10000,
+        "feed": "sip",
+        "sort": "asc",
+    }
+
+    all_bars: list = []
+    page_token = None
+
+    try:
+        while True:
+            if page_token:
+                params["page_token"] = page_token
+            resp = requests.get(
+                f"{ALPACA_DATA_BASE}/bars",
+                headers=headers,
+                params=params,
+                timeout=30,
+            )
+            resp.raise_for_status()
+            payload = resp.json()
+
+            bars_by_symbol = payload.get("bars") or {}
+            all_bars.extend(bars_by_symbol.get(ticker, []))
+
+            page_token = payload.get("next_page_token")
+            if not page_token:
+                break
+
+        if not all_bars:
+            logger.warning(f"No Alpaca bars returned for {ticker}")
+            return None
+
+        df = pd.DataFrame(all_bars)
+        df["t"] = pd.to_datetime(df["t"])
+        df = df.set_index("t").sort_index()
+        df = df.rename(columns={"o": "Open", "h": "High", "l": "Low", "c": "Close", "v": "Volume"})
+
+        for col in ["Open", "High", "Low", "Close", "Volume"]:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+
+        required_cols = ["Close", "High", "Low"]
+        missing_cols = [col for col in required_cols if col not in df.columns]
+        if missing_cols:
+            logger.error(f"Missing required columns in Alpaca data for {ticker}: {missing_cols}")
+            return None
+
+        optional_cols = ["Open", "Volume"]
+        cols_to_return = required_cols + [col for col in optional_cols if col in df.columns]
+
+        logger.info(f"Successfully fetched {len(df)} bars from Alpaca for {ticker}")
+        return df[cols_to_return]
+
+    except Exception as e:
+        logger.error(f"Failed to get historical data from Alpaca for {ticker}: {e}")
+        return None
+
+
 def get_stock_data_from_fmp(ticker: str, start: str) -> pd.DataFrame:
     """
     get historical price data from FMP
@@ -361,11 +446,14 @@ def load_price_cached(ticker: str, start: str, cache_buster: int = None, max_ret
                     f"Retrying {ticker} after {delay:.1f}s delay (attempt {attempt + 1}/{max_retries})")
                 time.sleep(delay)
 
-            # prioritize getting historical price data from FMP, if failed fallback to yfinance
-            df = get_stock_data_from_fmp(ticker, start)
+            df = get_stock_data_from_alpaca(ticker, start)
             if df is None or df.empty:
                 logger.warning(
-                    f"Failed to get historical price data from FMP for {ticker}, trying yinance")
+                    f"Failed to get historical price data from Alpaca for {ticker}, trying FMP")
+                df = get_stock_data_from_fmp(ticker, start)
+            if df is None or df.empty:
+                logger.warning(
+                    f"Failed to get historical price data from FMP for {ticker}, trying yfinance")
                 df = get_stock_data_from_yfinance(ticker, start)
 
             if df is None or df.empty:

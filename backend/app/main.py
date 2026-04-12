@@ -4,7 +4,7 @@ FastAPI entry point
 from loguru import logger
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .routers import analysis
+from .routers import analysis, portfolio
 import os
 from dotenv import load_dotenv
 
@@ -34,6 +34,7 @@ app.add_middleware(
 
 # Register routes
 app.include_router(analysis.router)
+app.include_router(portfolio.router)
 
 
 @app.get("/")

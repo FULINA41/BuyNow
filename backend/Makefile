@@ -59,14 +59,17 @@ docker-build: ## Build Docker image
 	docker build -t $(DOCKER_IMAGE):$(DOCKER_TAG) .
 	@echo "$(GREEN)Docker image built successfully!$(NC)"
 
-docker-run: ## Run Docker container locally
+docker-run: ## Run Docker container locally (hot-reload + volume mount)
 	@echo "$(GREEN)Running Docker container on port $(PORT)...$(NC)"
-	docker run -d --name $(DOCKER_IMAGE) -p $(PORT):8080 --env PORT=8080 $(DOCKER_IMAGE):$(DOCKER_TAG)
+	docker run -d --name $(DOCKER_IMAGE) -p $(PORT):8080 --env-file .env \
+		-v "$(PWD)/app:/app/app" \
+		$(DOCKER_IMAGE):$(DOCKER_TAG) \
+		uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload
 	@echo "$(GREEN)Container started. Access API at http://localhost:$(PORT)$(NC)"
 
 docker-run-interactive: ## Run Docker container interactively
 	@echo "$(GREEN)Running Docker container interactively...$(NC)"
-	docker run -it --rm -p $(PORT):8080 --env PORT=8080 $(DOCKER_IMAGE):$(DOCKER_TAG)
+	docker run -it --rm -p $(PORT):8080 --env-file .env $(DOCKER_IMAGE):$(DOCKER_TAG)
 
 docker-stop: ## Stop and remove Docker container
 	@echo "$(YELLOW)Stopping Docker container...$(NC)"
