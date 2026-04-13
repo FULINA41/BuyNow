@@ -47,6 +47,7 @@ async def optimize_portfolio(request: OptimizeRequest):
             cov_matrix,
             risk_free_rate=request.risk_free_rate,
             vol_penalty=request.vol_penalty,
+            max_annual_vol=request.max_annual_vol,
         )
 
         return OptimizeResponse(

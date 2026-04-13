@@ -168,6 +168,7 @@ class PortfolioOptimizer:
         cov_matrix: pd.DataFrame,
         risk_free_rate: float = 0.04,
         vol_penalty: float = 0.5,
+        max_annual_vol: Optional[float] = 0.23,
     ) -> Dict[str, float]:
         """
         Find the portfolio weights that maximise the Sharpe ratio.
@@ -197,7 +198,12 @@ class PortfolioOptimizer:
             vol_drag = vol_penalty * (weights @ asset_vols)
             return -sharpe + penalty + vol_drag
 
-        constraints = {"type": "eq", "fun": lambda w: np.sum(w) - 1.0}
+        constraints = [{"type": "eq", "fun": lambda w: np.sum(w) - 1.0}]
+        if max_annual_vol is not None:
+            _max_var = max_annual_vol ** 2
+            constraints.append(
+                {"type": "ineq", "fun": lambda w: _max_var - w @ cov_matrix.values @ w}
+            )
         bounds = tuple((0.05, 1.0) for _ in range(n))
 
         result = minimize(

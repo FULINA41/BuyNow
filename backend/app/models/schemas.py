@@ -106,6 +106,12 @@ class OptimizeRequest(BaseModel):
         le=5.0,
         description="Volatility penalty strength — higher values bias toward low-vol blue-chips",
     )
+    max_annual_vol: Optional[float] = Field(
+        0.23,
+        ge=0.01,
+        le=1.0,
+        description="Hard cap on annualized portfolio volatility (e.g. 0.23 = 23%). Set to null to disable.",
+    )
 
 
 class OptimizeResponse(BaseModel):
