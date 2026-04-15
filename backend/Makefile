@@ -1,4 +1,4 @@
-.PHONY: help install install-dev run run-dev docker-build docker-run docker-stop docker-push docker-test clean clean-pyc clean-logs test lint format check
+.PHONY: help install install-dev run run-dev docker-build docker-run docker-stop docker-push docker-test clean clean-pyc clean-logs test lint format check ml-data ml-train ml-pipeline ml-smoke ml-clean
 
 # Variables
 PYTHON := python3
@@ -150,6 +150,45 @@ format: ## Format code with black (if black is installed)
 
 check: lint ## Run all checks (lint, format check)
 	@echo "$(GREEN)Running all checks...$(NC)"
+
+# ML Pipeline
+ml-data: ## Download S&P 500 data → panel_data.parquet + ticker_vocab.json
+	@if [ ! -d "$(VENV)" ]; then \
+		echo "$(RED)Virtual environment not found. Run 'make install' first.$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(GREEN)Downloading data and building panel dataset…$(NC)"
+	$(PYTHON_VENV) -m train.data_loader
+	@echo "$(GREEN)Artifacts saved in train/$(NC)"
+
+ml-train: ## Train QuantModel (requires panel_data.parquet)
+	@if [ ! -d "$(VENV)" ]; then \
+		echo "$(RED)Virtual environment not found. Run 'make install' first.$(NC)"; \
+		exit 1; \
+	fi
+	@if [ ! -f "train/panel_data.parquet" ]; then \
+		echo "$(RED)panel_data.parquet not found. Run 'make ml-data' first.$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(GREEN)Training QuantModel…$(NC)"
+	$(PYTHON_VENV) -m train.trainer
+	@echo "$(GREEN)Training complete. Artifacts in train/$(NC)"
+
+ml-pipeline: ml-data ml-train ## Full ML pipeline: download → train
+	@echo "$(GREEN)ML pipeline complete!$(NC)"
+
+ml-smoke: ## Run QuantModel shape/smoke test
+	@if [ ! -d "$(VENV)" ]; then \
+		echo "$(RED)Virtual environment not found. Run 'make install' first.$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(GREEN)Running model smoke test…$(NC)"
+	$(PYTHON_VENV) -m app.ml.model
+
+ml-clean: ## Remove ML training artifacts
+	@echo "$(YELLOW)Removing ML artifacts…$(NC)"
+	rm -f train/panel_data.parquet train/global_alpha.pth train/feat_norm.pt train/ticker_vocab.json
+	@echo "$(GREEN)ML artifacts removed.$(NC)"
 
 # Cleanup
 clean: clean-pyc clean-logs ## Remove all generated files
