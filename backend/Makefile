@@ -161,7 +161,7 @@ ml-data: ## Download S&P 500 data → panel_data.parquet + ticker_vocab.json
 	$(PYTHON_VENV) -m train.data_loader
 	@echo "$(GREEN)Artifacts saved in train/$(NC)"
 
-ml-train: ## Train QuantModel (requires panel_data.parquet)
+ml-train: ## Train AlphaNet (requires panel_data.parquet)
 	@if [ ! -d "$(VENV)" ]; then \
 		echo "$(RED)Virtual environment not found. Run 'make install' first.$(NC)"; \
 		exit 1; \
@@ -170,14 +170,14 @@ ml-train: ## Train QuantModel (requires panel_data.parquet)
 		echo "$(RED)panel_data.parquet not found. Run 'make ml-data' first.$(NC)"; \
 		exit 1; \
 	fi
-	@echo "$(GREEN)Training QuantModel…$(NC)"
+	@echo "$(GREEN)Training AlphaNet…$(NC)"
 	$(PYTHON_VENV) -m train.trainer
 	@echo "$(GREEN)Training complete. Artifacts in train/$(NC)"
 
 ml-pipeline: ml-data ml-train ## Full ML pipeline: download → train
 	@echo "$(GREEN)ML pipeline complete!$(NC)"
 
-ml-smoke: ## Run QuantModel shape/smoke test
+ml-smoke: ## Run AlphaNet shape/smoke test
 	@if [ ! -d "$(VENV)" ]; then \
 		echo "$(RED)Virtual environment not found. Run 'make install' first.$(NC)"; \
 		exit 1; \

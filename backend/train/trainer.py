@@ -1,5 +1,5 @@
 """
-Training loop for the QuantModel (Hybrid Temporal Multi-Task Network).
+Training loop for AlphaNet (Hybrid Temporal Multi-Task Network).
 Enforces strict chronological Time-Series Split to prevent lookahead bias.
 
 Run from the backend/ directory:
@@ -21,7 +21,7 @@ BACKEND_DIR = SCRIPT_DIR.parent
 
 sys.path.insert(0, str(BACKEND_DIR))
 from app.ml.features import FEATURE_COLS  # noqa: E402
-from app.ml.model import QuantModel  # noqa: E402
+from app.ml.model import AlphaNet  # noqa: E402
 
 TARGET_COL = "fwd_ret_5d"
 VOL_COL = "fwd_vol_5d"
@@ -251,13 +251,13 @@ def main() -> None:
     with open(vocab_path) as f:
         num_embeddings = len(json.load(f))
 
-    model = QuantModel(
+    model = AlphaNet(
         num_features=len(FEATURE_COLS),
         num_embeddings=num_embeddings,
     ).to(device)
 
     n_params = sum(p.numel() for p in model.parameters())
-    print(f"QuantModel — {n_params:,} params")
+    print(f"AlphaNet — {n_params:,} params")
 
     optimizer = torch.optim.AdamW(
         model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY,

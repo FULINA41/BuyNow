@@ -1,5 +1,5 @@
 """
-QuantModel — Hybrid Temporal Multi-Task Network for the Global Panel Model.
+AlphaNet — Hybrid Temporal Multi-Task Network for the Global Panel Model.
 
 Architecture:
     ticker_id          →  nn.Embedding       →  ┐
@@ -21,7 +21,7 @@ import torch.nn.functional as F
 # Structured output
 # ──────────────────────────────────────────────────────────────────────
 
-class QuantModelOutput(NamedTuple):
+class AlphaNetOutput(NamedTuple):
     pred_return: torch.Tensor      # (B,) predicted 5-day return
     pred_direction: torch.Tensor   # (B,) logit for up / down
     pred_volatility: torch.Tensor  # (B,) predicted volatility (≥ 0)
@@ -31,7 +31,7 @@ class QuantModelOutput(NamedTuple):
 # Model
 # ──────────────────────────────────────────────────────────────────────
 
-class QuantModel(nn.Module):
+class AlphaNet(nn.Module):
     """Hybrid Temporal Multi-Task Network.
 
     Combines a per-ticker embedding, a 2-layer LSTM for temporal
@@ -129,7 +129,7 @@ class QuantModel(nn.Module):
         ticker_ids: torch.Tensor,
         temporal_features: torch.Tensor,
         external_features: torch.Tensor | None = None,
-    ) -> QuantModelOutput:
+    ) -> AlphaNetOutput:
         """
         Args:
             ticker_ids: (B,) long — ticker vocabulary IDs.
@@ -137,7 +137,7 @@ class QuantModel(nn.Module):
             external_features: (B, num_ext_features) float | None.
 
         Returns:
-            QuantModelOutput with pred_return, pred_direction,
+            AlphaNetOutput with pred_return, pred_direction,
             pred_volatility — each of shape (B,).
         """
         emb = self.ticker_embedding(ticker_ids)              # (B, E)
@@ -151,7 +151,7 @@ class QuantModel(nn.Module):
 
         shared = self.shared_mlp(torch.cat(branches, dim=1))
 
-        return QuantModelOutput(
+        return AlphaNetOutput(
             pred_return=self.return_head(shared).squeeze(-1),
             pred_direction=self.direction_head(shared).squeeze(-1),
             pred_volatility=self.volatility_head(shared).squeeze(-1),
@@ -160,7 +160,7 @@ class QuantModel(nn.Module):
     # ── loss (Kendall et al. dynamic uncertainty weighting) ──────
     def compute_loss(
         self,
-        output: QuantModelOutput,
+        output: AlphaNetOutput,
         true_return: torch.Tensor,
         true_volatility: torch.Tensor,
         true_direction: torch.Tensor | None = None,
@@ -215,18 +215,18 @@ class QuantModel(nn.Module):
 
 
 # ──────────────────────────────────────────────────────────────────────
-# Singleton model manager (inference) — supports QuantModel + LightGBM
+# Singleton model manager (inference) — supports AlphaNet + LightGBM
 # ──────────────────────────────────────────────────────────────────────
 
 class ModelManager:
     """Singleton that caches loaded models and dispatches inference by name.
 
     Supported backends:
-        ``"quant"``  — PyTorch QuantModel (LSTM multi-task)
+        ``"alphanet"``  — PyTorch AlphaNet (LSTM multi-task)
         ``"lgbm"``   — LightGBM Booster (gradient-boosted trees)
     """
 
-    QUANT = "quant"
+    ALPHANET = "alphanet"
     LGBM = "lgbm"
 
     _instance: "ModelManager | None" = None
@@ -248,7 +248,7 @@ class ModelManager:
             with open(vocab_path) as f:
                 self._vocab = json.load(f)
 
-    def load_quant(
+    def load_alphanet(
         self,
         weights_path: str | Path,
         vocab_path: str | Path,
@@ -256,14 +256,14 @@ class ModelManager:
         device: str = "cpu",
         **model_kwargs,
     ) -> None:
-        """Load the PyTorch QuantModel.
+        """Load the PyTorch AlphaNet.
 
         Args:
             weights_path: Path to ``global_alpha.pth``.
             vocab_path: Path to ``ticker_vocab.json``.
             norm_path: Path to ``feat_norm.pt``.
             device: ``'cpu'``, ``'mps'``, or ``'cuda'``.
-            **model_kwargs: Extra kwargs forwarded to QuantModel.
+            **model_kwargs: Extra kwargs forwarded to AlphaNet.
         """
         from .features import FEATURE_COLS
 
@@ -275,7 +275,7 @@ class ModelManager:
         }
         cfg.update(model_kwargs)
 
-        model = QuantModel(**cfg)
+        model = AlphaNet(**cfg)
         state = torch.load(
             str(weights_path), map_location=device, weights_only=True,
         )
@@ -289,7 +289,7 @@ class ModelManager:
         self._feat_mean = norm["mean"].to(device)
         self._feat_std = norm["std"].to(device)
         self._device = device
-        self._models[self.QUANT] = model
+        self._models[self.ALPHANET] = model
 
     def load_lgbm(
         self,
@@ -301,7 +301,7 @@ class ModelManager:
         Args:
             model_path: Path to ``lgbm_5d_return.txt``.
             vocab_path: Path to ``ticker_vocab.json``.  Optional if
-                the vocab was already loaded by :meth:`load_quant`.
+                the vocab was already loaded by :meth:`load_alphanet`.
         """
         import lightgbm as lgb
 
@@ -319,7 +319,7 @@ class ModelManager:
     @property
     def vocab(self) -> dict[str, int]:
         if self._vocab is None:
-            raise RuntimeError("Vocab not loaded. Call load_quant/load_lgbm with vocab_path first.")
+            raise RuntimeError("Vocab not loaded. Call load_alphanet/load_lgbm with vocab_path first.")
         return self._vocab
 
     @property
@@ -337,7 +337,7 @@ class ModelManager:
     # ── shared helpers ────────────────────────────────────────────
 
     def normalize(self, features: torch.Tensor) -> torch.Tensor:
-        """Apply train-set normalization (QuantModel only).  Broadcasts
+        """Apply train-set normalization (AlphaNet only).  Broadcasts
         correctly for both (B, F) and (B, seq_len, F) shaped inputs."""
         return (features - self._feat_mean) / self._feat_std
 
@@ -365,15 +365,15 @@ class ModelManager:
         """Run inference on a named model.
 
         Args:
-            name: ``"quant"`` or ``"lgbm"``.
+            name: ``"alphanet"`` or ``"lgbm"``.
             ticker: Ticker symbol (e.g. ``"AAPL"``).
             temporal_features: ``(seq_len, F)`` or ``(B, seq_len, F)``
                 raw (un-normalized) feature array.
-            external_features: Optional ``(B, E)`` array for QuantModel's
+            external_features: Optional ``(B, E)`` array for AlphaNet's
                 external branch.  Ignored by LightGBM.
 
         Returns:
-            dict with ``pred_return`` (always present) and, for the quant
+            dict with ``pred_return`` (always present) and, for the AlphaNet
             model, ``pred_direction`` and ``pred_volatility``.
         """
         model = self.get_model(name)
@@ -381,8 +381,8 @@ class ModelManager:
         if temporal_features.ndim == 2:
             temporal_features = temporal_features[np.newaxis]  # (1, S, F)
 
-        if name == self.QUANT:
-            return self._predict_quant(
+        if name == self.ALPHANET:
+            return self._predict_alphanet(
                 model, ticker, temporal_features, external_features,
             )
         if name == self.LGBM:
@@ -390,9 +390,9 @@ class ModelManager:
 
         raise ValueError(f"Unknown model name: '{name}'")
 
-    def _predict_quant(
+    def _predict_alphanet(
         self,
-        model: QuantModel,
+        model: AlphaNet,
         ticker: str,
         features: np.ndarray,
         external: np.ndarray | None,
@@ -409,7 +409,7 @@ class ModelManager:
             out = model(tid.expand(feat_t.shape[0]), feat_t, ext_t)
 
         return {
-            "model": self.QUANT,
+            "model": self.ALPHANET,
             "pred_return": out.pred_return.cpu().numpy().tolist(),
             "pred_direction": torch.sigmoid(out.pred_direction).cpu().numpy().tolist(),
             "pred_volatility": out.pred_volatility.cpu().numpy().tolist(),
@@ -441,11 +441,11 @@ if __name__ == "__main__":
     temporal = torch.randn(B, SEQ, FEAT)
 
     print("=" * 50)
-    print("  QuantModel — Shape Verification")
+    print("  AlphaNet — Shape Verification")
     print("=" * 50)
 
     # ── Without external features ────────────────────────────────
-    model = QuantModel(num_features=FEAT, num_embeddings=NUM_EMB)
+    model = AlphaNet(num_features=FEAT, num_embeddings=NUM_EMB)
     out = model(ids, temporal)
 
     print(f"\n[no ext]  pred_return:     {out.pred_return.shape}")
@@ -457,7 +457,7 @@ if __name__ == "__main__":
     assert (out.pred_volatility >= 0).all(), "Softplus must produce ≥ 0"
 
     # ── With external features ───────────────────────────────────
-    model_ext = QuantModel(
+    model_ext = AlphaNet(
         num_features=FEAT, num_embeddings=NUM_EMB,
         num_ext_features=EXT_F,
     )
