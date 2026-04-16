@@ -1,4 +1,4 @@
-.PHONY: help install install-dev run run-dev docker-build docker-run docker-stop docker-push docker-test clean clean-pyc clean-logs test lint format check
+.PHONY: help install install-dev run run-dev docker-build docker-run docker-stop docker-push docker-test clean clean-pyc clean-logs test lint format check ml-data ml-train ml-pipeline ml-smoke ml-clean
 
 # Variables
 PYTHON := python3
@@ -63,6 +63,7 @@ docker-run: ## Run Docker container locally (hot-reload + volume mount)
 	@echo "$(GREEN)Running Docker container on port $(PORT)...$(NC)"
 	docker run -d --name $(DOCKER_IMAGE) -p $(PORT):8080 --env-file .env \
 		-v "$(PWD)/app:/app/app" \
+		-v "$(PWD)/train:/app/train" \
 		$(DOCKER_IMAGE):$(DOCKER_TAG) \
 		uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload
 	@echo "$(GREEN)Container started. Access API at http://localhost:$(PORT)$(NC)"
@@ -150,6 +151,45 @@ format: ## Format code with black (if black is installed)
 
 check: lint ## Run all checks (lint, format check)
 	@echo "$(GREEN)Running all checks...$(NC)"
+
+# ML Pipeline
+ml-data: ## Download S&P 500 data → panel_data.parquet + ticker_vocab.json
+	@if [ ! -d "$(VENV)" ]; then \
+		echo "$(RED)Virtual environment not found. Run 'make install' first.$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(GREEN)Downloading data and building panel dataset…$(NC)"
+	$(PYTHON_VENV) -m train.data_loader
+	@echo "$(GREEN)Artifacts saved in train/$(NC)"
+
+ml-train: ## Train AlphaNet (requires panel_data.parquet)
+	@if [ ! -d "$(VENV)" ]; then \
+		echo "$(RED)Virtual environment not found. Run 'make install' first.$(NC)"; \
+		exit 1; \
+	fi
+	@if [ ! -f "train/panel_data.parquet" ]; then \
+		echo "$(RED)panel_data.parquet not found. Run 'make ml-data' first.$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(GREEN)Training AlphaNet…$(NC)"
+	$(PYTHON_VENV) -m train.trainer
+	@echo "$(GREEN)Training complete. Artifacts in train/$(NC)"
+
+ml-pipeline: ml-data ml-train ## Full ML pipeline: download → train
+	@echo "$(GREEN)ML pipeline complete!$(NC)"
+
+ml-smoke: ## Run AlphaNet shape/smoke test
+	@if [ ! -d "$(VENV)" ]; then \
+		echo "$(RED)Virtual environment not found. Run 'make install' first.$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(GREEN)Running model smoke test…$(NC)"
+	$(PYTHON_VENV) -m app.ml.model
+
+ml-clean: ## Remove ML training artifacts
+	@echo "$(YELLOW)Removing ML artifacts…$(NC)"
+	rm -f train/panel_data.parquet train/global_alpha.pth train/feat_norm.pt train/ticker_vocab.json
+	@echo "$(GREEN)ML artifacts removed.$(NC)"
 
 # Cleanup
 clean: clean-pyc clean-logs ## Remove all generated files

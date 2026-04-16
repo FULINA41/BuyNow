@@ -1,0 +1,122 @@
+[
+  {
+    "feature": "close_sma20_ratio_last",
+    "gain": 1.974869966506958
+  },
+  {
+    "feature": "macd_line_mean",
+    "gain": 1.531501978635788
+  },
+  {
+    "feature": "macd_line_std",
+    "gain": 1.142896018922329
+  },
+  {
+    "feature": "close_sma50_ratio_std",
+    "gain": 0.826552003622055
+  },
+  {
+    "feature": "volatility_20d_mean",
+    "gain": 0.710638016462326
+  },
+  {
+    "feature": "close_sma50_ratio_last",
+    "gain": 0.6345189809799194
+  },
+  {
+    "feature": "close_sma20_ratio_std",
+    "gain": 0.5574259907007217
+  },
+  {
+    "feature": "macd_signal_last",
+    "gain": 0.5354490280151367
+  },
+  {
+    "feature": "returns_std",
+    "gain": 0.4718973971903324
+  },
+  {
+    "feature": "macd_hist_std",
+    "gain": 0.42961499094963074
+  },
+  {
+    "feature": "macd_hist_mean",
+    "gain": 0.3746051900088787
+  },
+  {
+    "feature": "rsi_14_mean",
+    "gain": 0.33327698707580566
+  },
+  {
+    "feature": "returns_mean",
+    "gain": 0.23014000058174133
+  },
+  {
+    "feature": "volatility_20d_std",
+    "gain": 0.10327349603176117
+  },
+  {
+    "feature": "close_sma50_ratio_mean",
+    "gain": 0.07243099808692932
+  },
+  {
+    "feature": "returns_last",
+    "gain": 0.06559950113296509
+  },
+  {
+    "feature": "log_returns_last",
+    "gain": 0.0
+  },
+  {
+    "feature": "rsi_14_last",
+    "gain": 0.0
+  },
+  {
+    "feature": "macd_line_last",
+    "gain": 0.0
+  },
+  {
+    "feature": "macd_hist_last",
+    "gain": 0.0
+  },
+  {
+    "feature": "volatility_20d_last",
+    "gain": 0.0
+  },
+  {
+    "feature": "volume_sma20_ratio_last",
+    "gain": 0.0
+  },
+  {
+    "feature": "log_returns_mean",
+    "gain": 0.0
+  },
+  {
+    "feature": "macd_signal_mean",
+    "gain": 0.0
+  },
+  {
+    "feature": "close_sma20_ratio_mean",
+    "gain": 0.0
+  },
+  {
+    "feature": "volume_sma20_ratio_mean",
+    "gain": 0.0
+  },
+  {
+    "feature": "log_returns_std",
+    "gain": 0.0
+  },
+  {
+    "feature": "rsi_14_std",
+    "gain": 0.0
+  },
+  {
+    "feature": "macd_signal_std",
+    "gain": 0.0
+  },
+  {
+    "feature": "volume_sma20_ratio_std",
+    "gain": 0.0
+  }
+]
