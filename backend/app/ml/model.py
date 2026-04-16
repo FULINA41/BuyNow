@@ -422,9 +422,19 @@ class ModelManager:
     ) -> dict:
         X = self._flatten_for_lgbm(features.astype(np.float64))
         preds = booster.predict(X).tolist()
+
+        importance = booster.feature_importance(importance_type="gain")
+        names = booster.feature_name()
+        top5_idx = np.argsort(importance)[::-1][:5]
+        top5 = [
+            {"feature": names[i], "gain": float(importance[i])}
+            for i in top5_idx
+        ]
+
         return {
             "model": self.LGBM,
             "pred_return": preds,
+            "top_features": top5,
         }
 
 

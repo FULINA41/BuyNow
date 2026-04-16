@@ -10,8 +10,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy and install Python dependencies (incl. test deps for running tests in builder)
+# Use CPU-only PyTorch to avoid pulling ~6 GB of NVIDIA/CUDA libraries
 COPY requirements.txt requirements-dev.txt /build/
-RUN pip install --no-cache-dir --user -r requirements-dev.txt
+RUN pip install --no-cache-dir --user torch --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir --user -r requirements-dev.txt
 
 # Copy app and tests, run integration tests (build fails if tests fail)
 COPY ./app ./app
@@ -23,7 +25,8 @@ RUN python -m pytest tests/ -v
 FROM python:3.12-slim AS test
 WORKDIR /app
 COPY requirements.txt requirements-dev.txt /app/
-RUN pip install --no-cache-dir -r requirements-dev.txt
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir -r requirements-dev.txt
 COPY ./app ./app
 COPY ./tests ./tests
 ENV PYTHONPATH=/app
@@ -41,11 +44,12 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 # Copy Python dependencies from builder
 COPY --from=builder /root/.local /home/appuser/.local
 
-# Copy application code
+# Copy application code and training artifacts
 COPY ./app ./app
+COPY ./train ./train
 
 # Create logs directory and set proper permissions
-RUN mkdir -p /app/app/logs && \
+RUN mkdir -p /app/app/logs /home/appuser/.local && \
     chown -R appuser:appuser /app /home/appuser/.local
 
 # Set PATH to include user's local bin

@@ -5,8 +5,8 @@ from fastapi import APIRouter, HTTPException
 from loguru import logger
 import pandas as pd
 
-from ..models.schemas import OptimizeRequest, OptimizeResponse
-from ..utils.quant_engine import PortfolioOptimizer
+from ...models.schemas import OptimizeRequest, OptimizeResponse
+from ...utils.quant_engine import PortfolioOptimizer
 
 router = APIRouter(prefix="/api/v1", tags=["portfolio"])
 

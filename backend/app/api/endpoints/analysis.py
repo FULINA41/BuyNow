@@ -5,14 +5,14 @@ from loguru import logger
 from fastapi import APIRouter, HTTPException
 from starlette.responses import StreamingResponse
 import pandas as pd
-from ..models.schemas import AnalysisRequest, AnalysisResponse, SignalResponse, RiskResponse, ZonesResponse, FundamentalsResponse, FairValueResponse, AddLevelsResponse
-from ..services.data_loader import load_price
-from ..services.signals import signal_abc
-from ..services.risk import risk_level
-from ..services.zones import buy_zones, add_levels
-from ..services.fundamentals import get_fundamentals, rough_fair_value_range
-from ..core.logging_config import setup_logging
-from ..services.LLM import analyze_stock_fundamentals_llm
+from ...models.schemas import AnalysisRequest, AnalysisResponse, SignalResponse, RiskResponse, ZonesResponse, FundamentalsResponse, FairValueResponse, AddLevelsResponse
+from ...services.data_loader import load_price
+from ...services.signals import signal_abc
+from ...services.risk import risk_level
+from ...services.zones import buy_zones, add_levels
+from ...services.fundamentals import get_fundamentals, rough_fair_value_range
+from ...core.logging_config import setup_logging
+from ...services.LLM import analyze_stock_fundamentals_llm
 import json
 setup_logging()
 logger.add("logs/analysis.log", backtrace=True, diagnose=True)

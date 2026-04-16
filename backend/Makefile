@@ -63,6 +63,7 @@ docker-run: ## Run Docker container locally (hot-reload + volume mount)
 	@echo "$(GREEN)Running Docker container on port $(PORT)...$(NC)"
 	docker run -d --name $(DOCKER_IMAGE) -p $(PORT):8080 --env-file .env \
 		-v "$(PWD)/app:/app/app" \
+		-v "$(PWD)/train:/app/train" \
 		$(DOCKER_IMAGE):$(DOCKER_TAG) \
 		uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload
 	@echo "$(GREEN)Container started. Access API at http://localhost:$(PORT)$(NC)"
