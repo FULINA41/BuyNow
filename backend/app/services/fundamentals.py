@@ -258,7 +258,7 @@ def rough_fair_value_range(f: dict) -> dict:
         mid_mc = fcf / 0.045
         high_mc = fcf / 0.03
         return {
-            "Method": "FCF Yield（粗算）",
+            "Method": "FCF Yield (rough)",
             "FairLow": low_mc / shares,
             "FairMid": mid_mc / shares,
             "FairHigh": high_mc / shares
@@ -268,7 +268,7 @@ def rough_fair_value_range(f: dict) -> dict:
     if revenue is not None and shares is not None and revenue > 0 and shares > 0:
         # 粗区间：4 / 6 / 8
         return {
-            "Method": "PS Multiple（粗算）",
+            "Method": "PS Multiple (rough)",
             "FairLow": (revenue * 4.0) / shares,
             "FairMid": (revenue * 6.0) / shares,
             "FairHigh": (revenue * 8.0) / shares

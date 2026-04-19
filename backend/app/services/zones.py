@@ -68,10 +68,10 @@ def add_levels(last: float, zones: dict, fair: dict) -> dict:
     rule = None
     if fair_low is not None and fair_low > 0:
         value_pocket = fair_low * 0.90
-        rule = "价格 ≤ 0.9 × FairLow（估值折扣）"
+        rule = "Price ≤ 0.9 × FairLow (valuation discount)"
     elif fair_mid is not None and fair_mid > 0:
         value_pocket = fair_mid * 0.70
-        rule = "价格 ≤ 0.7 × FairMid（估值折扣）"
+        rule = "Price ≤ 0.7 × FairMid (valuation discount)"
 
     return {
         "FirstAdd": first_add,
