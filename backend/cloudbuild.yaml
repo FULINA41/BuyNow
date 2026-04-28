@@ -23,7 +23,7 @@ steps:
       - '--timeout=60s'
       - '--min-instances=0'
       - '--max-instances=10'
-      - '--set-env-vars=FMP_API_KEY=${_FMP_API_KEY},GEMINI_API_KEY=${_GEMINI_API_KEY}'
+      - '--set-env-vars=FMP_API_KEY=${_FMP_API_KEY},GEMINI_API_KEY=${_GEMINI_API_KEY},ALPACA_API_KEY_ID=${_ALPACA_API_KEY_ID},ALPACA_API_SECRET_KEY=${_ALPACA_API_SECRET_KEY}'
 
 images:
   - 'gcr.io/$PROJECT_ID/engineer-alpha-api'
