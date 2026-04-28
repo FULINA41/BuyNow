@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
-from .api.endpoints import analysis, portfolio, predict
+from .api.endpoints import analysis, options_lab, portfolio, predict
 from .core.logging_config import setup_logging
 
 setup_logging()
@@ -71,6 +71,7 @@ app.add_middleware(
 app.include_router(analysis.router)
 app.include_router(portfolio.router)
 app.include_router(predict.router)
+app.include_router(options_lab.router)
 
 
 @app.get("/")
