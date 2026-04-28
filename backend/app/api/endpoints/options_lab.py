@@ -39,6 +39,9 @@ router = APIRouter(prefix="/api/v1/options", tags=["options"])
 
 ALPACA_BARS_URL = "https://data.alpaca.markets/v2/stocks/bars/latest"
 FMP_STABLE_BASE = "https://financialmodelingprep.com/stable"
+POLYGON_SNAPSHOT_URL = (
+    "https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers/{ticker}"
+)
 
 
 # ── Spot price helper ─────────────────────────────────────────────────
@@ -80,8 +83,41 @@ def _spot_from_yfinance(ticker: str) -> float | None:
         return None
 
 
+def _spot_from_polygon(ticker: str) -> float | None:
+    api_key = (os.getenv("POLYGON_API_KEY") or "").strip("'\" ")
+    if not api_key:
+        return None
+    try:
+        resp = requests.get(
+            POLYGON_SNAPSHOT_URL.format(ticker=ticker.upper()),
+            params={"apiKey": api_key},
+            timeout=10,
+        )
+        if resp.status_code in (401, 403, 429):
+            logger.warning(
+                f"Polygon spot returned {resp.status_code} for {ticker}"
+            )
+            return None
+        resp.raise_for_status()
+        data = (resp.json() or {}).get("ticker") or {}
+        price = (
+            (data.get("lastTrade") or {}).get("p")
+            or (data.get("min") or {}).get("c")
+            or (data.get("day") or {}).get("c")
+            or (data.get("prevDay") or {}).get("c")
+        )
+        return float(price) if price else None
+    except (requests.RequestException, ValueError) as exc:
+        logger.warning(f"Polygon spot fetch failed for {ticker}: {exc}")
+        return None
+
+
 def _resolve_spot(ticker: str) -> float:
-    spot = _spot_from_alpaca(ticker) or _spot_from_yfinance(ticker)
+    spot = (
+        _spot_from_alpaca(ticker)
+        or _spot_from_yfinance(ticker)
+        or _spot_from_polygon(ticker)
+    )
     if spot is None or spot <= 0:
         raise HTTPException(
             status_code=503,
@@ -145,12 +181,13 @@ def _prep_chain_for_strategy(
     max_days_to_expiry: int = 60,
     strike_window_pct: float = 0.25,
 ):
-    chain = load_options_chain(ticker)
-    if chain is None or chain.is_empty():
+    loaded = load_options_chain(ticker)
+    if loaded is None:
         raise HTTPException(
             status_code=404,
             detail=f"No options chain available for {ticker}",
         )
+    chain, _src = loaded
 
     expiry_cutoff = today + timedelta(days=max_days_to_expiry)
     strike_low = spot * (1.0 - strike_window_pct)
@@ -200,12 +237,13 @@ def get_gex(
     gamma is too small to drive near-term hedging flow.
     """
     ticker = ticker.upper()
-    chain = load_options_chain(ticker)
-    if chain is None or chain.is_empty():
+    loaded = load_options_chain(ticker)
+    if loaded is None:
         raise HTTPException(
             status_code=404,
             detail=f"No options chain available for {ticker}",
         )
+    chain, chain_source = loaded
 
     spot = _resolve_spot(ticker)
     today = date.today()
@@ -248,9 +286,9 @@ def get_gex(
 
     result = compute_net_gex(filtered, spot=spot)
 
-    # If Greeks were populated upstream, the chain came from Alpaca (yfinance
-    # never returns Greeks). We use this as a coarse source attribution.
-    source = "yfinance" if needs_greeks else "alpaca"
+    # Source comes from load_options_chain so callers can distinguish
+    # alpaca-with-real-OI vs alpaca-volume-proxy vs yfinance/polygon.
+    source = chain_source
 
     return GEXResponse(
         ticker=ticker,

@@ -42,6 +42,7 @@ from loguru import logger
 
 
 ALPACA_OPTIONS_BASE = "https://data.alpaca.markets/v1beta1/options"
+POLYGON_BASE = "https://api.polygon.io"
 
 _OCC_PATTERN = re.compile(
     r"^(?P<root>[A-Z]+)"
@@ -92,7 +93,7 @@ def parse_occ_symbol(occ: str) -> dict | None:
 
 # ── Alpaca primary source ─────────────────────────────────────────────
 
-def _fetch_from_alpaca(ticker: str) -> pl.DataFrame | None:
+def _fetch_from_alpaca(ticker: str) -> tuple[pl.DataFrame, str] | None:
     """Fetch an options-chain snapshot from Alpaca.
 
     Returns ``None`` on any failure (missing creds, 403, empty payload),
@@ -178,17 +179,28 @@ def _fetch_from_alpaca(ticker: str) -> pl.DataFrame | None:
 
     df = pl.DataFrame(rows, schema=_SCHEMA).sort(["expiry", "strike", "type"])
 
-    # The free-tier "indicative" feed returns quotes (and sometimes Greeks)
-    # but never Open Interest. Without OI we cannot compute GEX, so treat
-    # such payloads as a miss and let the yfinance fallback take over.
+    # The free-tier "indicative" feed never returns Open Interest. When OI
+    # is all-zero we fall back to daily volume as a proxy weight so GEX can
+    # still locate the gamma walls (volume and OI are highly correlated for
+    # liquid strikes). Wall *positions* remain valid; absolute GEX dollar
+    # amounts do not. Source is reported as "alpaca-volume-proxy" so the
+    # client can label the chart accordingly.
     if int(df["oi"].sum() or 0) == 0:
+        vol_sum = int(df["volume"].sum() or 0)
+        if vol_sum == 0:
+            logger.info(
+                f"Alpaca returned {df.height} contracts for {ticker} with "
+                "neither OI nor volume — falling back to yfinance"
+            )
+            return None
         logger.info(
-            f"Alpaca returned {df.height} contracts for {ticker} but no "
-            "open interest — falling back to yfinance"
+            f"Alpaca {ticker}: indicative feed has no OI; using daily volume "
+            f"as proxy (total volume={vol_sum})"
         )
-        return None
+        df = df.with_columns(pl.col("volume").alias("oi"))
+        return df, "alpaca-volume-proxy"
 
-    return df
+    return df, "alpaca"
 
 
 def _f(v) -> float | None:
@@ -219,7 +231,7 @@ def _i(v) -> int:
 
 # ── yfinance fallback ─────────────────────────────────────────────────
 
-def _fetch_from_yfinance(ticker: str) -> pl.DataFrame | None:
+def _fetch_from_yfinance(ticker: str) -> tuple[pl.DataFrame, str] | None:
     """Fetch options chains across all expirations from yfinance."""
     try:
         import yfinance as yf
@@ -276,7 +288,103 @@ def _fetch_from_yfinance(ticker: str) -> pl.DataFrame | None:
     if not rows:
         return None
 
-    return pl.DataFrame(rows, schema=_SCHEMA).sort(["expiry", "strike", "type"])
+    return pl.DataFrame(rows, schema=_SCHEMA).sort(["expiry", "strike", "type"]), "yfinance"
+
+
+# ── Polygon.io fallback ───────────────────────────────────────────────
+
+def _fetch_from_polygon(ticker: str) -> tuple[pl.DataFrame, str] | None:
+    """Fetch options-chain snapshots from Polygon.io.
+
+    Used when Alpaca and yfinance both fail (typical in Cloud Run where
+    Yahoo blocks GCP egress IPs). Requires ``POLYGON_API_KEY``. Free tier
+    works but is heavily rate-limited (5 req/min); Options Starter
+    ($29/mo) lifts that for production.
+    """
+    api_key = (os.getenv("POLYGON_API_KEY") or "").strip("'\" ")
+    if not api_key:
+        return None
+
+    url: str | None = f"{POLYGON_BASE}/v3/snapshot/options/{ticker.upper()}"
+    params: dict = {"limit": 250, "apiKey": api_key}
+    rows: list[dict] = []
+
+    try:
+        while url:
+            resp = requests.get(url, params=params, timeout=20)
+            if resp.status_code in (401, 403):
+                logger.warning(
+                    f"Polygon options snapshot returned {resp.status_code} "
+                    f"for {ticker} — falling back"
+                )
+                return None
+            if resp.status_code == 429:
+                logger.warning(
+                    f"Polygon rate-limited for {ticker} — using partial result"
+                )
+                break
+            resp.raise_for_status()
+            payload = resp.json() or {}
+            for snap in payload.get("results") or []:
+                details = snap.get("details") or {}
+                quote = snap.get("last_quote") or {}
+                trade = snap.get("last_trade") or {}
+                greeks = snap.get("greeks") or {}
+                day = snap.get("day") or {}
+
+                exp_str = details.get("expiration_date")
+                if not exp_str or details.get("strike_price") is None:
+                    continue
+                try:
+                    expiry = datetime.strptime(exp_str, "%Y-%m-%d").date()
+                except ValueError:
+                    continue
+
+                bid = quote.get("bid")
+                ask = quote.get("ask")
+                last = trade.get("price")
+                mid = quote.get("midpoint")
+                if mid is None:
+                    mid = (
+                        (bid + ask) / 2.0
+                        if bid is not None and ask is not None and (bid + ask) > 0
+                        else last
+                    )
+
+                rows.append(
+                    {
+                        "symbol": str(details.get("ticker") or ""),
+                        "type": "call" if details.get("contract_type") == "call" else "put",
+                        "strike": float(details["strike_price"]),
+                        "expiry": expiry,
+                        "bid": _f(bid),
+                        "ask": _f(ask),
+                        "mid": _f(mid),
+                        "last": _f(last),
+                        "iv": _f(snap.get("implied_volatility")),
+                        "oi": _i(snap.get("open_interest")),
+                        "volume": _i(day.get("volume")),
+                        "delta": _f(greeks.get("delta")),
+                        "gamma": _f(greeks.get("gamma")),
+                        "theta": _f(greeks.get("theta")),
+                        "vega": _f(greeks.get("vega")),
+                    }
+                )
+
+            next_url = payload.get("next_url")
+            if next_url:
+                url = next_url
+                params = {"apiKey": api_key}  # next_url already carries cursor
+            else:
+                url = None
+    except requests.RequestException as exc:
+        logger.warning(f"Polygon options fetch failed for {ticker}: {exc}")
+        return None
+
+    if not rows:
+        return None
+
+    return pl.DataFrame(rows, schema=_SCHEMA).sort(["expiry", "strike", "type"]), "polygon"
 
 
 # ── Public API ────────────────────────────────────────────────────────
@@ -285,22 +393,26 @@ def _fetch_from_yfinance(ticker: str) -> pl.DataFrame | None:
 def _load_options_chain_cached(
     ticker: str,
     cache_buster: int,
-) -> pl.DataFrame | None:
-    """Inner cached fetch. ``cache_buster`` rolls every 15 minutes."""
-    df = _fetch_from_alpaca(ticker)
-    if df is not None and not df.is_empty():
-        logger.info(f"Loaded {len(df)} option contracts for {ticker} from Alpaca")
-        return df
+) -> tuple[pl.DataFrame, str] | None:
+    """Inner cached fetch. ``cache_buster`` rolls every 15 minutes.
 
-    df = _fetch_from_yfinance(ticker)
-    if df is not None and not df.is_empty():
-        logger.info(f"Loaded {len(df)} option contracts for {ticker} from yfinance")
-        return df
+    Returns ``(df, source)`` where ``source`` is one of
+    ``"alpaca"`` | ``"alpaca-volume-proxy"`` | ``"yfinance"`` | ``"polygon"``.
+    """
+    for fetch in (_fetch_from_alpaca, _fetch_from_yfinance, _fetch_from_polygon):
+        result = fetch(ticker)
+        if result is None:
+            continue
+        df, source = result
+        if df is None or df.is_empty():
+            continue
+        logger.info(f"Loaded {df.height} option contracts for {ticker} from {source}")
+        return df, source
 
     return None
 
 
-def load_options_chain(ticker: str) -> pl.DataFrame | None:
+def load_options_chain(ticker: str) -> tuple[pl.DataFrame, str] | None:
     """Load an options chain (15-min cache). Returns ``None`` on miss."""
     cache_buster = int(time.time() / 900)
     return _load_options_chain_cached(ticker.upper(), cache_buster)
